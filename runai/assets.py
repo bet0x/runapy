@@ -1,8 +1,8 @@
 from typing import Literal, Optional
 
-from runai import models
-from runai import errors
-from runai.controllers import Controller
+from . import models
+from . import errors
+from .controllers import Controller
 
 
 class CommonAssetsController(Controller):

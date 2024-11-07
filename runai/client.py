@@ -10,7 +10,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from pydantic import BaseModel, HttpUrl, model_validator
 
-from runai import assets
+from . import assets
 from . import errors
 from . import controllers
 from . import models

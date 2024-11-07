@@ -943,3 +943,66 @@ class DistributedController(Controller):
         path = f"/api/v1/workloads/distributed/{ditributed_workload_id}"
 
         return self.client.delete(path)
+
+
+class LogsController(Controller):
+    def __init__(self, client):
+        super().__init__(client)
+
+    def get_logs(self, workload_id: str, limit: int = 10) -> str:
+        """
+        Get logs for a specific workload.
+        
+        Args:
+            workload_id (str): ID of the workload
+            limit (int): Number of lines to return. Options: 10, 50, 100, or 0 for all lines
+        """
+        try:
+            # Get pods information
+            pods_path = f"/api/v1/workloads/{workload_id}/pods"
+            params = {"clusterId": self.client.cluster_id}
+            pods_response = self.client.get(pods_path, params)
+            
+            pods = pods_response.get('pods', [])
+            if not pods:
+                raise errors.RunaiClientError(f"No pods found for workload {workload_id}", None)
+            
+            pod = pods[0]
+            pod_name = pod.get('name')
+            pod_project = pod.get('project')
+            pod_jobname = pod.get('jobName')
+
+            logs_path = f"/researcher/api/v1/logsfile"
+            log_params = {
+                "project": pod_project,
+                "jobName": pod_jobname,
+                "podName": pod_name
+            }
+
+            full_url = f"{self.client._base_url}{logs_path}"
+
+            raw_response = self.client._session.get(
+                full_url,
+                params=log_params,
+                headers=self.client._session.headers,
+                stream=True
+            )
+
+            if raw_response.status_code != 200:
+                print(f"Error response: {raw_response.text}")
+                raise errors.RunaiClientError(f"Failed to get logs. Status: {raw_response.status_code}", None)
+
+            content = raw_response.content.decode('utf-8', errors='replace')        
+            lines = content.split('\n')
+            
+            if limit == 0:
+                return content
+            else:
+                limited_lines = lines[-limit:] if len(lines) > limit else lines
+                return '\n'.join(limited_lines)
+
+        except Exception as e:
+            print(f"Error in get_logs: {str(e)}")
+            if 'pods_response' in locals():
+                print(f"Last known pods response: {pods_response}")
+            raise errors.RunaiClientError(f"Failed to get logs: {str(e)}", e)
